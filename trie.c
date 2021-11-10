@@ -16,7 +16,18 @@ typedef struct Ranks {
 	int ranker;
 } Ranker;
 
-int insert(Trie *trie, char *value, int len, int p);
+Trie *childTrie() {
+	Trie *childTrie = malloc(sizeof(Trie));
+
+	// loop through children and set them to 0
+	for (int i = 0; i < 26; i++) {
+		childTrie->children[i] = NULL;
+	}
+
+	return childTrie;
+}
+
+int insert(Trie *trie, char *value);
 
 int destruct(Trie *trie);
 
@@ -24,39 +35,44 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 
 int main() {
 	// define head
-	Trie *head = malloc(sizeof(Trie));
-	head->childCount = 0;
+	Trie *head = childTrie();
 
-	insert(head, "test", strlen("test"), 0);
-	insert(head, "test", strlen("test"), 0);
-	insert(head, "es", strlen("es"), 0);
-	insert(head, "t", strlen("t"), 0);
-	insert(head, "tes", strlen("tes"), 0);
+	insert(head, "test");
+	//insert(head, "test");
+	//insert(head, "es");
+	//insert(head, "t");
+	//insert(head, "tes");
+
+	printf("please %d %d\n", head->children[19], head->children[19]->weight);
 
 	for (int i = 0; i < 26; i++) {
+		printf("Test %d to %d\n", i, head->children[i]);
 		if (head->children[i])
 			printf("Making changes at %d with: %d\n", i, head->children[i]->weight);
 	}
 
 	// define Ranker initial values
-	Ranker array[16];
-	Ranker *rankerPointer = (Ranker *) array;
+	// Ranker array[16];
+	// Ranker *rankerPointer = (Ranker *) array;
 
-	int arrSize = 16;
-	int *arrSizePnt = &arrSize;
-	int arrPos = 0;
-	int *arrPosPnt = &arrPos;
+	// int arrSize = 16;
+	// int *arrSizePnt = &arrSize;
+	// int arrPos = 0;
+	// int *arrPosPnt = &arrPos;
 
-	char *query = "te";
-	suggest(head, query, 0, &rankerPointer, arrSizePnt, arrPosPnt, "", 0);
+	// char *query = "te";
+	// //suggest(head, query, 0, &rankerPointer, arrSizePnt, arrPosPnt, "", 0);
 
-	// loop through and check our head:
-	for (int i = 0; i < arrPos + 1; i++) {
-		printf("Look at i %d and value there %d and string %d\n", i, array[i].ranker, array[i].word);
-		free(array[i].word);
-	}
+	// // loop through and check our head:
+	// for (int i = 0; i < arrPos + 1; i++) {
+	// 	printf("Look at i %d and value there %d and string %d\n", i, array[i].ranker, array[i].word);
+	// 	free(array[i].word);
+	// }
 
-	destruct(head);
+	// free(rankerPointer);
+	// free(arrSizePnt);
+	// free(arrPosPnt);
+	//destruct(head);
 
 	return 0;
 }
@@ -78,26 +94,26 @@ int main() {
 			The output will just be a register of the ocmpletion of the process,
 			but when looking at the trie, it will now have new updated values
 */
-int insert(Trie *trie, char *value, int len, int p) {
-
-	int childPoint = (((int) value[p]) - 97); // find position in children
+int insert(Trie *trie, char *value) {
+	int childPoint = (((int) *value) - 97); // find position in children
 
 	// access the trie at that children, if it doesn't exist,
 	// make a new sub trie:
 	if (!trie->children[childPoint]) {
-		Trie *childTrie = malloc(sizeof(Trie));
 
 		trie->childCount++;
-		trie->children[childPoint] = childTrie;
+		trie->children[childPoint] = childTrie();
 	}
 
-	// if we reached the end of our input word
-	if (p == len - 1) {
-		trie->children[childPoint]->weight++;
+	// check for more characters after our current one, if there aren't
+	// any more, then we want to go ahead and add to the weight:
+	if (!(*(value + 1))) {
+		//trie->children[childPoint]->weight++;
 		return 0;
 	}
 
-	return insert(trie->children[childPoint], value, len, p + 1);
+	value++;
+	return insert(trie->children[childPoint], value);
 }
 
 /*

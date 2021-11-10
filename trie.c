@@ -24,6 +24,9 @@ Trie *childTrie() {
 		childTrie->children[i] = NULL;
 	}
 
+	childTrie->weight = 0;
+	childTrie->childCount = 0;
+
 	return childTrie;
 }
 
@@ -38,41 +41,38 @@ int main() {
 	Trie *head = childTrie();
 
 	insert(head, "test");
-	//insert(head, "test");
-	//insert(head, "es");
-	//insert(head, "t");
-	//insert(head, "tes");
-
-	printf("please %d %d\n", head->children[19], head->children[19]->weight);
+	insert(head, "test");
+	insert(head, "es");
+	insert(head, "t");
+	insert(head, "tes");
 
 	for (int i = 0; i < 26; i++) {
-		printf("Test %d to %d\n", i, head->children[i]);
 		if (head->children[i])
 			printf("Making changes at %d with: %d\n", i, head->children[i]->weight);
 	}
 
 	// define Ranker initial values
-	// Ranker array[16];
-	// Ranker *rankerPointer = (Ranker *) array;
+	Ranker array[16];
+	Ranker *rankerPointer = (Ranker *) array;
 
-	// int arrSize = 16;
-	// int *arrSizePnt = &arrSize;
-	// int arrPos = 0;
-	// int *arrPosPnt = &arrPos;
+	int arrSize = 16;
+	int *arrSizePnt = &arrSize;
+	int arrPos = 0;
+	int *arrPosPnt = &arrPos;
 
-	// char *query = "te";
-	// //suggest(head, query, 0, &rankerPointer, arrSizePnt, arrPosPnt, "", 0);
+	char *query = "te";
+	suggest(head, query, -1, &rankerPointer, arrSizePnt, arrPosPnt, "", 0);
 
+	printf("Added items? %d\n", arrPos);
 	// // loop through and check our head:
 	// for (int i = 0; i < arrPos + 1; i++) {
 	// 	printf("Look at i %d and value there %d and string %d\n", i, array[i].ranker, array[i].word);
 	// 	free(array[i].word);
 	// }
 
-	// free(rankerPointer);
-	// free(arrSizePnt);
-	// free(arrPosPnt);
-	//destruct(head);
+	printf("test pos 1 %d with %s\n", array[1].ranker, array[1].word);
+
+	destruct(head);
 
 	return 0;
 }
@@ -108,7 +108,7 @@ int insert(Trie *trie, char *value) {
 	// check for more characters after our current one, if there aren't
 	// any more, then we want to go ahead and add to the weight:
 	if (!(*(value + 1))) {
-		//trie->children[childPoint]->weight++;
+		trie->children[childPoint]->weight++;
 		return 0;
 	}
 
@@ -199,10 +199,10 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 			rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
 
 		return *arr;
+	} else {
+		if (trie->weight && currentEditDist < MAX_DIST) // we want to add to suggests in this scenario
+			rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
 	}
-
-	printf("Value incoming %d\n", trie->weight);
-	printf("Access %d\n", trie->children[0]);
 
 	// otherwise, we need to continue to search for new values
 	// by going through each possible route in our trie:
@@ -215,13 +215,10 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 	for (int i = 0; i < 26; i++) {
 		newWordBuild[strPos + 1] = i + 97;
 
-		printf("\tadding to buffer size %d and word %s\n", strPos + 1, newWordBuild);
-
 		// evaluate trie->children[i]
 		// this must exist for us to continue
 		if (!trie->children[i]) {
 			if (trie->weight && !hasAdded) { // add something to arr: (ONLY FIRST TIME THIS OCCURS)
-				printf("Adding new word %s\n", currentWord);
 
 				hasAdded = 1;
 				rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
@@ -230,12 +227,10 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 			continue;
 		}
 
-		printf("Rolling forward %d\n", trie->children[i]->weight);
-
 		suggest(trie->children[i],
 			query, strPos + 1, arr, arrSize, arrPos,
 			newWordBuild,
-			currentEditDist + (((int) (query[strPos])) == i) ? 0 : 1);
+			currentEditDist + (((int) (query[strPos + 1])) == i) ? 0 : 1);
 	}
 
 	return *arr;

@@ -6,9 +6,9 @@ lList *makeliNode() {
 	lList *pumperNode = malloc(sizeof(lList));
 
 	pumperNode->tail = NULL;
-	pumperNode->head = NULL;
 	pumperNode->weight = 0;
 	pumperNode->dist = 0;
+	pumperNode->word = NULL;
 
 	return pumperNode;
 }
@@ -43,7 +43,6 @@ int insertLast(lList *node, int weight, int dist) {
 		node = node->tail;
 
 	node->tail = (lList *) makeliNode();
-	node->tail->head = node;
 	node->tail->weight = weight;
 	node->tail->dist = dist;
 
@@ -54,7 +53,6 @@ int insertFirst(lList *node, int weight, int dist) {
 	lList *new = makeliNode();
 
 	new->tail = node;
-	node->head = new;
 	new->weight = weight;
 	new->dist = dist;
 
@@ -98,10 +96,10 @@ int printList(lList *start) {
 	return 0;
 }
 
-int destroy(lList *start) {
+int ll_destroy(lList *start) {
 
 	if (start->tail)
-		destroy(start->tail);
+		ll_destroy(start->tail);
 
 	free(start);
 

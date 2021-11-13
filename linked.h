@@ -3,7 +3,6 @@
 
 typedef struct List {
 	struct List *tail;
-	struct List *head;
 	int weight; // occurence of word
 	int dist; // distance from user input
 	char *word;
@@ -21,6 +20,6 @@ lList *reverse(lList *start);
 
 int printList(lList *start);
 
-int destroy(lList *start);
+int ll_destroy(lList *start);
 
 #endif

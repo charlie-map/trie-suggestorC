@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "linked.h"
+#include "weight.h"
 
 const int MAX_DIST = 3;
 
@@ -10,11 +12,6 @@ typedef struct TrieS {
 	// we have  so we don't have to recalculate
 	struct TrieS *children[26];
 } Trie;
-
-typedef struct Ranks {
-	char *word;
-	int ranker;
-} Ranker;
 
 Trie *childTrie() {
 	Trie *childTrie = malloc(sizeof(Trie));
@@ -34,7 +31,7 @@ int insert(Trie *trie, char *value);
 
 int destruct(Trie *trie);
 
-Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize, int *arrPos, char *currentWord, int currentEditDist);
+int suggest(Trie *trie, lList *head, char *query, int strPos, char *currentWord, int currentEditDist);
 
 int main() {
 	// define head
@@ -51,26 +48,12 @@ int main() {
 			printf("Making changes at %d with: %d\n", i, head->children[i]->weight);
 	}
 
-	// define Ranker initial values
-	Ranker array[16];
-	Ranker *rankerPointer = (Ranker *) array;
-
-	int arrSize = 16;
-	int *arrSizePnt = &arrSize;
-	int arrPos = 0;
-	int *arrPosPnt = &arrPos;
+	lList *ll_head = makeliNode();
 
 	char *query = "te";
-	suggest(head, query, -1, &rankerPointer, arrSizePnt, arrPosPnt, "", 0);
+	suggest(head, ll_head, query, -1, "", 0);
 
-	printf("Added items? %d\n", arrPos);
-	// // loop through and check our head:
-	// for (int i = 0; i < arrPos + 1; i++) {
-	// 	printf("Look at i %d and value there %d and string %d\n", i, array[i].ranker, array[i].word);
-	// 	free(array[i].word);
-	// }
-
-	printf("test pos 1 %d with %s\n", array[1].ranker, array[1].word);
+	printList(ll_head);
 
 	destruct(head);
 
@@ -107,12 +90,11 @@ int insert(Trie *trie, char *value) {
 
 	// check for more characters after our current one, if there aren't
 	// any more, then we want to go ahead and add to the weight:
-	if (!(*(value + 1))) {
+	if (!(*(++value))) {
 		trie->children[childPoint]->weight++;
 		return 0;
 	}
 
-	value++;
 	return insert(trie->children[childPoint], value);
 }
 
@@ -135,29 +117,6 @@ int destruct(Trie *trie) {
 	}
 
 	free(trie);
-	return 0;
-}
-
-/*
-	rankerAdd does the process of adding a word into arr as well as the weight,
-	which will be used for later ranking. This will also take care of if Ranker **arr
-	runs out of space
-*/
-int rankerAdd(Trie *trie, Ranker **arr, int *arrSize, int *arrPos, char *currentWord, int wordLength) {
-	if (*arrPos == *arrSize) {
-		*arrSize *= 2;
-
-		*arr = (Ranker *) realloc(*arr, *arrSize * (sizeof(Ranker)));
-	}
-
-	((*arr) + *arrPos)->ranker = trie->weight;
-	((*arr) + *arrPos)->word = malloc(sizeof(char) * wordLength);
-	strcpy(((*arr) + *arrPos)->word, currentWord);
-
-	printf("ADDED TO WORD %s to %s\n", currentWord, ((*arr) + *arrPos)->word);
-
-	*arrPos++;
-
 	return 0;
 }
 
@@ -187,7 +146,7 @@ int rankerAdd(Trie *trie, Ranker **arr, int *arrSize, int *arrPos, char *current
 			edit distance as we are traversing our trie instead of recalculating
 			the value each time
 */
-Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize, int *arrPos, char *currentWord, int currentEditDist) {
+int suggest(Trie *trie, lList *ll_head, char *query, int strPos, char *currentWord, int currentEditDist) {
 	// our first step is our base case, we need to ensure
 	// that we aren't creeping towards a dead end
 	// this is how we will prune our trie:
@@ -196,24 +155,25 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 		// trie has a weight (meaning currentWord is a real word):
 
 		if (trie->weight)
-			rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
+			insertNodeWeighted(ll_head, currentWord, trie->weight, currentEditDist, weightCmp);
 
-		return *arr;
+		return 0;
 	} else {
-		if (trie->weight && currentEditDist < MAX_DIST) // we want to add to suggests in this scenario
-			rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
+		if (trie->weight) // we want to add to suggests in this scenario
+			insertNodeWeighted(ll_head, currentWord, trie->weight, currentEditDist, weightCmp);
 	}
 
 	// otherwise, we need to continue to search for new values
 	// by going through each possible route in our trie:
-	char newWordBuild[strPos + 2];
+	char *newWordBuild = (char *) malloc(sizeof(char) * (strPos + 3));
 
 	strcpy(newWordBuild, currentWord);
+	*(newWordBuild + (strPos + 2) * sizeof(char)) = '\0';
 
 	int hasAdded = 0;
 
 	for (int i = 0; i < 26; i++) {
-		newWordBuild[strPos + 1] = i + 97;
+		*(newWordBuild + (strPos + 1) * sizeof(char)) = (char) i + 97;
 
 		// evaluate trie->children[i]
 		// this must exist for us to continue
@@ -221,17 +181,19 @@ Ranker *suggest(Trie *trie, char *query, int strPos, Ranker **arr, int *arrSize,
 			if (trie->weight && !hasAdded) { // add something to arr: (ONLY FIRST TIME THIS OCCURS)
 
 				hasAdded = 1;
-				rankerAdd(trie, arr, arrSize, arrPos, currentWord, strPos + 1);
+				insertNodeWeighted(ll_head, currentWord, trie->weight, currentEditDist, weightCmp);
 			}
 
 			continue;
 		}
 
-		suggest(trie->children[i],
-			query, strPos + 1, arr, arrSize, arrPos,
+		suggest(trie->children[i], ll_head,
+			query, strPos + 1,
 			newWordBuild,
 			currentEditDist + (((int) (query[strPos + 1])) == i) ? 0 : 1);
+
+		free(newWordBuild);
 	}
 
-	return *arr;
+	return 0;
 }

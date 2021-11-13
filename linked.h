@@ -11,7 +11,7 @@ typedef struct List {
 
 lList *makeliNode();
 
-int insertNodeWeighted(lList *ll_runner, int weight, int dist, float (*comparer)(lList *old, lList *new));
+int insertNodeWeighted(lList *ll_runner, char *word, int weight, int dist, float (*comparer)(lList *old, lList *new));
 
 int insertLast(lList *node, int weight, int dist);
 

@@ -13,11 +13,12 @@ lList *makeliNode() {
 	return pumperNode;
 }
 
-int insertNodeWeighted(lList *ll_runner, int weight, int dist, float (*comparer)(lList *old, lList *new)) {
+int insertNodeWeighted(lList *ll_runner, char *word, int weight, int dist, float (*comparer)(lList *old, lList *new)) {
 	lList *newNode = makeliNode();
 
 	newNode->weight = weight;
 	newNode->dist = dist;
+	newNode->word = word;
 
 	while (ll_runner->tail && comparer(ll_runner, newNode) > 0) {
 		ll_runner = ll_runner->tail;
@@ -88,12 +89,12 @@ int printList(lList *start) {
 	int pos = 0;
 
 	while (start->tail) {
-		printf("Values for node %d are weight: %d and edit distance: %d\n", pos, start->weight, start->dist);
+		printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, start->weight, start->dist, start->word);
 		start = start->tail;
 		pos++;
 	}
 
-	printf("Values for node %d are weight: %d and edit distance: %d\n", pos, start->weight, start->dist);
+	printf("Values for node %d are weight: %d and edit distance: %d, with a word: %d\n", pos, start->weight, start->dist, start->word);
 	return 0;
 }
 

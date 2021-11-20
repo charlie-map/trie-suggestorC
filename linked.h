@@ -3,18 +3,15 @@
 
 typedef struct List {
 	struct List *tail;
-	int weight; // occurence of word
-	int dist; // distance from user input
-	char *word;
 } lList;
 
 lList *makeliNode();
 
-int insertNodeWeighted(lList *ll_runner, char *word, int weight, int dist, float (*comparer)(lList *old, lList *new));
+int insertNodeWeighted(lList **ll_runner, void *payload, float (*comparer)(lList *old, lList *new));
 
-int insertLast(lList *node, int weight, int dist);
+int insertLast(lList *node, void *payload);
 
-int insertFirst(lList *node, int weight, int dist);
+int insertFirst(lList *node, void *payload);
 
 lList *reverse(lList *start);
 

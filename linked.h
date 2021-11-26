@@ -3,20 +3,19 @@
 
 typedef struct List {
 	struct List *tail;
-} lList;
+	void *payload;
+} ll_main;
 
-lList *makeliNode();
+ll_main *makeliNode();
 
-int insertNodeWeighted(lList **ll_runner, void *payload, float (*comparer)(lList *old, lList *new));
+int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(void *, void *));
 
-int insertLast(lList *node, void *payload);
+int insertLast(ll_main *node, void *payload);
 
-int insertFirst(lList *node, void *payload);
+ll_main *insertFirst(ll_main *node, void *payload);
 
-lList *reverse(lList *start);
+ll_main *reverse(ll_main *start);
 
-int printList(lList *start);
-
-int ll_destroy(lList *start);
+int ll_destroy(ll_main *start, void (*ll_payloadDestroy)(void *));
 
 #endif

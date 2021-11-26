@@ -9,6 +9,32 @@ const int MAX_DIST = 3;
 const float PER_WEIGHT = 0.6;
 const float PER_DIST = 0.4;
 
+typedef struct ll_payload {
+	int weight;
+	int dist;
+	char *word;
+} ll_load;
+
+ll_load *ll_makePayload(char *word, int weight, int dist) {
+	ll_load *ll_p = (ll_load*) malloc(sizeof(ll_load));
+
+	ll_p->weight = weight;
+	ll_p->dist = dist;
+	if (word) {
+		ll_p->word = (char *) malloc(sizeof(word));
+		strcpy(ll_p->word, word);
+	}
+
+	return ll_p;
+}
+
+void ll_payloadDestroy(void *payload) {
+	free(((ll_load *) payload)->word);
+	free(payload);
+
+	return;
+}
+
 /*
 	weightCmp:
 		this function is how we decide the "signifigance"
@@ -27,22 +53,23 @@ const float PER_DIST = 0.4;
 		The weight of each of those is decided by two float constants
 		that have a percentage of 1.
 */
-float weightCmp(lList *cmp1, lList *cmp2) {
-	int cmp1_weight = cmp1->weight;
-	int cmp1_dist = cmp1->dist;
+float weightCmp(void *cmp1, void *cmp2) {
+	int cmp1_weight = ((ll_load *) ((ll_main *)cmp1)->payload)->weight;
+	int cmp1_dist = ((ll_load *) ((ll_main *)cmp1)->payload)->dist;
 
-	int cmp2_weight = cmp2->weight;
-	int cmp2_dist = cmp2->dist;
-	//printf("calculating for %s %s and get")
+	int cmp2_weight = ((ll_load *) ((ll_main *)cmp2)->payload)->weight;
+	int cmp2_dist = ((ll_load *) ((ll_main *)cmp2)->payload)->dist;
 
 	float weight_dir = (cmp1_weight - cmp2_weight) * PER_WEIGHT;
 	float dist_dir = (cmp1_dist - cmp2_dist) * PER_DIST;
 
-	printf("calculated values for %s and %s and got %1.3f %1.3f\n",  cmp1->word, cmp2->word, weight_dir, dist_dir);
+	printf("calculated values for %s and %s and got %1.3f %1.3f\n",  ((ll_load *) ((ll_main *)cmp1)->payload)->word, ((ll_load *) ((ll_main *)cmp1)->payload)->word, weight_dir, dist_dir);
 	return weight_dir + dist_dir;
 }
 
-int suggest(Trie *trie, lList **ll_head, char *query, int strPos, char *currentWord, int currentEditDist);
+int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char *currentWord, int currentEditDist);
+
+int printList(ll_main *start);
 
 int main() {
 	// define head
@@ -57,14 +84,15 @@ int main() {
 	insert(head, "teal");
 	insert(head, "teal");
 
-	lList *ll_head = makeliNode();
+ 	ll_load *ll_headValues = (ll_load *) ll_makePayload(NULL, 0, 0);
+	ll_main *ll_head = makeliNode(ll_headValues);
 
 	char *query = "te";
 	char *buildWord = "a";
 	suggest(head, &ll_head, query, 0, buildWord, 0);
 
 	printList(ll_head);
-	ll_destroy(ll_head);
+	ll_destroy(ll_head, ll_payloadDestroy);
 
 	destruct(head);
 
@@ -90,13 +118,13 @@ SUGGEST:
 		edit distance as we are traversing our trie instead of recalculating
 		the value each time
 */
-int suggest(Trie *trie, lList **ll_head, char *query, int strPos, char currentWord[], int currentEditDist) {
+int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char currentWord[], int currentEditDist) {
 	// our first step is our base case, we need to ensure
 	// that we aren't creeping towards a dead end
 	// this is how we will prune our trie:
 	if (trie->weight) {
 		printf("adding pre path? %s\n", currentWord);
-		insertNodeWeighted(ll_head, currentWord, trie->weight, currentEditDist, weightCmp);
+		insertNodeWeighted(ll_head, ll_makePayload(currentWord, trie->weight, currentEditDist), weightCmp);
 
 		printf("\n\nBIG LL TEST\n");
 		printList(*ll_head);
@@ -140,5 +168,20 @@ int suggest(Trie *trie, lList **ll_head, char *query, int strPos, char currentWo
 		//free(currentWord);
 	}
 
+	return 0;
+}
+
+int printList(ll_main *start) {
+	int pos = 0;
+
+	ll_load *buffer = (ll_load *) start->payload;
+
+	while (start->tail) {
+		printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
+		start = start->tail;
+		pos++;
+	}
+
+	printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
 	return 0;
 }

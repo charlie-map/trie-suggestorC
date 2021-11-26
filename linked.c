@@ -5,18 +5,18 @@
 
 const int WEIGHT_NODE_MAX = 10;
 
-lList *makeliNode(void *payload) {
-	lList *pumperNode = malloc(sizeof(lList));
+ll_main *makeliNode(void *payload) {
+	ll_main *pumperNode = malloc(sizeof(ll_main));
 
 	pumperNode->payload = payload;
 
 	return pumperNode;
 }
 
-int insertNodeWeighted(lList **ll_runner, void *payload, float (*comparer)(lList *old, lList *new)) {
-	lList *newNode = makeliNode(payload);
+int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(void *, void *)) {
+	ll_main *newNode = makeliNode(payload);
 
-	if (!(*ll_runner)->word)
+	if (!(*ll_runner)->tail)
 		return 0;
 
 	int posInNode = 0;
@@ -34,7 +34,7 @@ int insertNodeWeighted(lList **ll_runner, void *payload, float (*comparer)(lList
 
 	// insert wherever we currently are
 	// save the ll_runner's current tail:
-	lList *buffer = (*ll_runner)->tail;
+	ll_main *buffer = (*ll_runner)->tail;
 	(*ll_runner)->tail = newNode;
 	newNode->tail = buffer;
 
@@ -45,24 +45,22 @@ int insertNodeWeighted(lList **ll_runner, void *payload, float (*comparer)(lList
 	The following are basic functions that may be
 	used. Creating some of them more for fun.
 */
-int insertLast(lList *node, void *payload) {
+int insertLast(ll_main *node, void *payload) {
 
 	while (node->tail)
 		node = node->tail;
 
-	node->tail = (lList *) makeliNode(payload);
+	node->tail = (ll_main *) makeliNode(payload);
 
 	return 0;
 }
 
-int insertFirst(lList *node, void *payload) {
-	lList *new = makeliNode(payload);
+ll_main *insertFirst(ll_main *node, void *payload) {
+	ll_main *new = makeliNode(payload);
 
 	new->tail = node;
-	new->weight = weight;
-	new->dist = dist;
 
-	return 0;
+	return new;
 }
 
 /*
@@ -72,9 +70,9 @@ int insertFirst(lList *node, void *payload) {
 
 	Note: starts from front!
 */
-lList *reverse(lList *curr) {
-	lList *prev = NULL;
-	lList *next = curr->tail;
+ll_main *reverse(ll_main *curr) {
+	ll_main *prev = NULL;
+	ll_main *next = curr->tail;
 
 	while (next) {
 		curr->tail = prev;
@@ -89,27 +87,13 @@ lList *reverse(lList *curr) {
 	return curr;
 }
 
-int printList(lList *start) {
-	int pos = 0;
-
-	while (start->tail) {
-		printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, start->weight, start->dist, start->word);
-		start = start->tail;
-		pos++;
-	}
-
-	printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, start->weight, start->dist, start->word);
-	return 0;
-}
-
-int ll_destroy(lList *start) {
+int ll_destroy(ll_main *start, void (*ll_payloadDestroy)(void *)) {
 
 	if (start->tail)
-		ll_destroy(start->tail);
+		ll_destroy(start->tail, ll_payloadDestroy);
 
-	printf("free word? %s\n", start->word);
-	if (start->word)
-		free(start->word);
+	if (ll_payloadDestroy)
+		ll_payloadDestroy(start->payload);
 	free(start);
 
 	return 0;

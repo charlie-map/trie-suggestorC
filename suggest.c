@@ -21,8 +21,12 @@ ll_load *ll_makePayload(char *word, int weight, int dist) {
 	ll_p->weight = weight;
 	ll_p->dist = dist;
 	if (word) {
+		printf("Adding word %s\n", word);
+
 		ll_p->word = (char *) malloc(sizeof(word));
 		strcpy(ll_p->word, word);
+
+		printf("Added word %s\n", ll_p->word);
 	}
 
 	return ll_p;
@@ -71,6 +75,23 @@ int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char *curren
 
 int printList(ll_main *start);
 
+int charTest(char *query) {
+	printf("New char %s\n", query);
+
+	for (int i = 0; i < 3; i++) {
+		printf("Accessing test %c\n", query[i]);
+
+		query[i] = (char) i + 97;
+		query[i + 1] = '\0';
+
+		printf("Access after %c\n", query[i]);
+	}
+
+	printf("End char %s\n", query);
+
+	return 0;
+}
+
 int main() {
 	// define head
 	Trie *head = childTrie();
@@ -88,7 +109,9 @@ int main() {
 	ll_main *ll_head = makeliNode(ll_headValues);
 
 	char *query = "te";
-	char *buildWord = "a";
+	char buildWord[] = "a";
+
+	//charTest(buildWord);
 	suggest(head, &ll_head, query, 0, buildWord, 0);
 
 	printList(ll_head);
@@ -126,6 +149,7 @@ int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char current
 		printf("adding pre path? %s\n", currentWord);
 		insertNodeWeighted(ll_head, ll_makePayload(currentWord, trie->weight, currentEditDist), weightCmp);
 
+		printf("Testing %d\n", ((ll_load*) (*ll_head)->tail->payload)->weight);
 		printf("\n\nBIG LL TEST\n");
 		printList(*ll_head);
 	}
@@ -137,19 +161,13 @@ int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char current
 	// otherwise, we need to continue to search for new values
 	// by going through each possible route in our trie:
 	printf("running through word %s\n", currentWord);
-	if (currentWord[strPos] == '\0') {
-		printf("%d\n", strPos + 1);
-		currentWord = realloc(currentWord, ((strPos + 1) * 2) * sizeof(char));
-		currentWord[strPos * 2 + 1] = '\0';
-	}
-
 	int hasAdded = 0;
 
 	printf("Going to add to length %d with %d: %c\n", strlen(currentWord), strPos, currentWord[strPos]);
 	for (int i = 0; i < 26; i++) {
 		printf("%c and %c\n", currentWord[strPos], (char) i + 97);
 		currentWord[strPos] = (char) i + 97;
-		//currentWord[strPos + 1] = '\0';
+		currentWord[strPos + 1] = '\0';
 
 		// evaluate trie->children[i]
 		// this must exist for us to continue
@@ -176,9 +194,14 @@ int printList(ll_main *start) {
 
 	ll_load *buffer = (ll_load *) start->payload;
 
+	if (buffer)
+		printf("word pointer %d to \n", buffer->word);//, buffer->word);
+
 	while (start->tail) {
-		printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
+		if (buffer)
+			printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
 		start = start->tail;
+		buffer = (ll_load *) start->payload;
 		pos++;
 	}
 

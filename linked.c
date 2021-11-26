@@ -6,7 +6,7 @@
 const int WEIGHT_NODE_MAX = 10;
 
 ll_main *makeliNode(void *payload) {
-	ll_main *pumperNode = malloc(sizeof(ll_main));
+	ll_main *pumperNode = (ll_main*) malloc(sizeof(ll_main));
 
 	pumperNode->payload = payload;
 
@@ -15,9 +15,6 @@ ll_main *makeliNode(void *payload) {
 
 int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(void *, void *)) {
 	ll_main *newNode = makeliNode(payload);
-
-	if (!(*ll_runner)->tail)
-		return 0;
 
 	int posInNode = 0;
 
@@ -34,9 +31,9 @@ int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(voi
 
 	// insert wherever we currently are
 	// save the ll_runner's current tail:
-	ll_main *buffer = (*ll_runner)->tail;
-	(*ll_runner)->tail = newNode;
-	newNode->tail = buffer;
+	ll_main *buffer = (ll_main *) (*ll_runner)->tail;
+	(*ll_runner)->tail = (ll_main *) newNode;
+	newNode->tail = (ll_main *) buffer;
 
 	return 0;
 }

@@ -57,17 +57,20 @@ void ll_payloadDestroy(void *payload) {
 		The weight of each of those is decided by two float constants
 		that have a percentage of 1.
 */
-float weightCmp(void *cmp1, void *cmp2) {
-	int cmp1_weight = ((ll_load *) ((ll_main *)cmp1)->payload)->weight;
-	int cmp1_dist = ((ll_load *) ((ll_main *)cmp1)->payload)->dist;
+float weightCmp(ll_main *cmp1, ll_main *cmp2) {
+	// ((ll_load*) (*ll_head)->tail->payload)->weight
+	printf("here %d %d and %d %s %s\n", cmp1, cmp2); //((ll_load *) cmp1->payload));
 
-	int cmp2_weight = ((ll_load *) ((ll_main *)cmp2)->payload)->weight;
-	int cmp2_dist = ((ll_load *) ((ll_main *)cmp2)->payload)->dist;
+	int cmp1_weight = ((ll_load *) cmp1->payload)->weight;
+	int cmp1_dist = ((ll_load *) cmp1->payload)->dist;
+
+	int cmp2_weight = ((ll_load *) cmp2->payload)->weight;
+	int cmp2_dist = ((ll_load *) cmp2->payload)->dist;
 
 	float weight_dir = (cmp1_weight - cmp2_weight) * PER_WEIGHT;
 	float dist_dir = (cmp1_dist - cmp2_dist) * PER_DIST;
 
-	printf("calculated values for %s and %s and got %1.3f %1.3f\n",  ((ll_load *) ((ll_main *)cmp1)->payload)->word, ((ll_load *) ((ll_main *)cmp1)->payload)->word, weight_dir, dist_dir);
+	printf("calculated values for %s and %s and got %1.3f %1.3f\n",  ((ll_load *) cmp1->payload)->word, ((ll_load *) cmp2->payload)->word, weight_dir, dist_dir);
 	return weight_dir + dist_dir;
 }
 

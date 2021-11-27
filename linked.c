@@ -13,12 +13,12 @@ ll_main *makeliNode(void *payload) {
 	return pumperNode;
 }
 
-int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(void *, void *)) {
+int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(ll_main *, ll_main *)) {
 	ll_main *newNode = makeliNode(payload);
 
 	int posInNode = 0;
 
-	while ((*(ll_runner))->tail && comparer(*ll_runner, newNode) > 0) {
+	while ((*ll_runner)->tail && comparer(*ll_runner, newNode) > 0) {
 		*ll_runner = (*ll_runner)->tail;
 
 		posInNode++;

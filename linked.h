@@ -8,7 +8,7 @@ typedef struct List {
 
 ll_main *makeliNode();
 
-int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(void *, void *));
+int insertNodeWeighted(ll_main **ll_runner, void *payload, float (*comparer)(ll_main *, ll_main *));
 
 int insertLast(ll_main *node, void *payload);
 

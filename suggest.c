@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "linked.h"
+
+#include "heap.h"
 #include "trie.h"
 
 const int MAX_DIST = 3;
@@ -9,205 +10,71 @@ const int MAX_DIST = 3;
 const float PER_WEIGHT = 0.6;
 const float PER_DIST = 0.4;
 
-typedef struct ll_payload {
-	int weight;
-	int dist;
-	char *word;
-} ll_load;
-
-ll_load *ll_makePayload(char *word, int weight, int dist) {
-	ll_load *ll_p = (ll_load*) malloc(sizeof(ll_load));
-
-	ll_p->weight = weight;
-	ll_p->dist = dist;
-	if (word) {
-		printf("Adding word %s\n", word);
-
-		ll_p->word = (char *) malloc(sizeof(word));
-		strcpy(ll_p->word, word);
-
-		printf("Added word %s\n", ll_p->word);
-	}
-
-	return ll_p;
+int compare(float num1, float num2) {
+	return num1 < num2;
 }
 
-void ll_payloadDestroy(void *payload) {
-	free(((ll_load *) payload)->word);
-	free(payload);
-
-	return;
+float calcWeight(int trie_weight, int word_dist) {
+	return ((word_dist + 1) * PER_DIST) / (trie_weight * PER_WEIGHT);
 }
 
-/*
-	weightCmp:
-		this function is how we decide the "signifigance"
-		of each word
-
-		We will take in two components in our list and
-		check which one is more important. If the return value
-		of weightCmp is -1, then we know that cmp1 is less
-		"signifigant". A value of 1 means that cmp1 is more
-		"signifigant"
-
-		The return value will depend on two factors:
-			the weight
-			the dist
-
-		The weight of each of those is decided by two float constants
-		that have a percentage of 1.
-*/
-float weightCmp(ll_main *cmp1, ll_main *cmp2) {
-	// ((ll_load*) (*ll_head)->tail->payload)->weight
-	printf("here %d %d and %d %s %s\n", cmp1, cmp2); //((ll_load *) cmp1->payload));
-
-	int cmp1_weight = ((ll_load *) cmp1->payload)->weight;
-	int cmp1_dist = ((ll_load *) cmp1->payload)->dist;
-
-	int cmp2_weight = ((ll_load *) cmp2->payload)->weight;
-	int cmp2_dist = ((ll_load *) cmp2->payload)->dist;
-
-	float weight_dir = (cmp1_weight - cmp2_weight) * PER_WEIGHT;
-	float dist_dir = (cmp1_dist - cmp2_dist) * PER_DIST;
-
-	printf("calculated values for %s and %s and got %1.3f %1.3f\n",  ((ll_load *) cmp1->payload)->word, ((ll_load *) cmp2->payload)->word, weight_dir, dist_dir);
-	return weight_dir + dist_dir;
-}
-
-int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char *currentWord, int currentEditDist);
-
-int printList(ll_main *start);
-
-int charTest(char *query) {
-	printf("New char %s\n", query);
-
-	for (int i = 0; i < 3; i++) {
-		printf("Accessing test %c\n", query[i]);
-
-		query[i] = (char) i + 97;
-		query[i + 1] = '\0';
-
-		printf("Access after %c\n", query[i]);
-	}
-
-	printf("End char %s\n", query);
-
-	return 0;
-}
+int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *curr_word, int dist);
 
 int main() {
 	// define head
 	Trie *head = childTrie();
+	heap_t *heap = heap_create(compare);
 
-	insert(head, "test");
-	insert(head, "test");
-	insert(head, "es");
-	insert(head, "t");
-	insert(head, "tes");
-	insert(head, "teal");
-	insert(head, "teal");
-	insert(head, "teal");
+	insert(head, "cat");
+	insert(head, "act");
+	insert(head, "acts");
+	insert(head, "acts");
 
- 	ll_load *ll_headValues = (ll_load *) ll_makePayload(NULL, 0, 0);
-	ll_main *ll_head = makeliNode(ll_headValues);
+	char *start = malloc(sizeof(char));
+	start[0] = '\0';
+	suggest(head, heap, "c", 0, start, 0);
 
-	char *query = "te";
-	char buildWord[] = "a";
-
-	//charTest(buildWord);
-	suggest(head, &ll_head, query, 0, buildWord, 0);
-
-	printList(ll_head);
-	ll_destroy(ll_head, ll_payloadDestroy);
+	printf("Test %s\n", (char *) heap_peek(heap));
 
 	destruct(head);
+	heap_destroy(&heap);
 
 	return 0;
 }
 
-/*
-SUGGEST:
-	Trie is going to calculate possible suggestions for a given query
-	this will work as an initial qualifier to then calculate which words
-	are most important.
+int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *curr_word, int dist) {
+	// ensure the dist is reasonable (base case)
 
-	trie: Trie *trie points to the head of the trie. There will be a search
-		through a sliced portion of the tree
-	query: char *query is the string to be finding suggestions for
-	strPos: int strPos points to our position in query, so we can use this for
-		deciding whether our current number matches our search path in the tree.
-		This will also tell us once we're our of range of the query word,
-		which is where we then start using forward suggest
-	currentWord: char *currentWord is the word we are currently building as
-		we DFS through the trie
-	currentEditDist: int currentEditDist -- to save time, we will calculate the
-		edit distance as we are traversing our trie instead of recalculating
-		the value each time
-*/
-int suggest(Trie *trie, ll_main **ll_head, char *query, int strPos, char currentWord[], int currentEditDist) {
-	// our first step is our base case, we need to ensure
-	// that we aren't creeping towards a dead end
-	// this is how we will prune our trie:
-	if (trie->weight) {
-		printf("adding pre path? %s\n", currentWord);
-		insertNodeWeighted(ll_head, ll_makePayload(currentWord, trie->weight, currentEditDist), weightCmp);
+	// go through the trie possible children
+	// recursively test pathes that are strong
+	for (int try_path = 0; try_path < 26; try_path++) {
+		// update curr_word and dist on recursive call
+		if (trie->children[try_path]) {
+			// create a new word and copy over curr_word
+			char *new_word = malloc(sizeof(curr_word) + sizeof(char));
+			strcpy(new_word, curr_word);
 
-		printf("Testing %d\n", ((ll_load*) (*ll_head)->tail->payload)->weight);
-		printf("\n\nBIG LL TEST\n");
-		printList(*ll_head);
-	}
+			// add the new character
+			new_word[query_curr_pos + 1] = (char) 97 + try_path;
 
-	if (currentEditDist >= MAX_DIST)
-		// this was a dead end path
-		return 0;
+			// calculate new distance
+			int new_dist = dist + ((int) query[query_curr_pos] == 97 + try_path ? 0 : 1);
 
-	// otherwise, we need to continue to search for new values
-	// by going through each possible route in our trie:
-	printf("running through word %s\n", currentWord);
-	int hasAdded = 0;
+			// only push to heap if there is a weight at this word
+			if (trie->children[try_path]->weight) {
 
-	printf("Going to add to length %d with %d: %c\n", strlen(currentWord), strPos, currentWord[strPos]);
-	for (int i = 0; i < 26; i++) {
-		printf("%c and %c\n", currentWord[strPos], (char) i + 97);
-		currentWord[strPos] = (char) i + 97;
-		currentWord[strPos + 1] = '\0';
+				// calculate weight of word
+				printf("check weighting scheme %d and %d\n", trie->children[try_path]->weight, new_dist);
+				float weight = calcWeight(trie->children[try_path]->weight, new_dist);
 
-		// evaluate trie->children[i]
-		// this must exist for us to continue
-		if (!trie->children[i]) {
+				// push into the heap
+				printf("Test new combo %s: %1.3f\n", new_word, weight);
+				heap_push(heap, new_word, weight);
+			}
 
-			continue;
+			// recur
+			suggest(trie->children[try_path], heap, query, query_curr_pos + 1, new_word, new_dist);
 		}
-
-		//printf("Continuing? %c for curr word: %s with dist? %d\n", (char) i + 97, currentWord, (((int) (query[strPos + 1])) == i) ? 0 : 1);
-		suggest(trie->children[i], ll_head,
-			query, strPos + 1,
-			currentWord,
-			currentEditDist + (((int) (query[strPos])) == i
-				|| !(query[strPos])) ? 0 : 1);
-
-		//free(currentWord);
 	}
-
-	return 0;
-}
-
-int printList(ll_main *start) {
-	int pos = 0;
-
-	ll_load *buffer = (ll_load *) start->payload;
-
-	if (buffer)
-		printf("word pointer %d to \n", buffer->word);//, buffer->word);
-
-	while (start->tail) {
-		if (buffer)
-			printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
-		start = start->tail;
-		buffer = (ll_load *) start->payload;
-		pos++;
-	}
-
-	printf("Values for node %d are weight: %d and edit distance: %d, with a word: %s\n", pos, buffer->weight, buffer->dist, buffer->word);
 	return 0;
 }

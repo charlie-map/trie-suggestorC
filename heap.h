@@ -5,7 +5,7 @@ typedef struct MinPointer heap_t;
 
 heap_t *heap_create(int (*compare)(float, float));
 
-void *heap_push(heap_t *min, void *payload, float weight);
+void *heap_push(heap_t *min, void *payload, float weight, int (*destroy)(void *));
 void *heap_peek(heap_t *head);
 void *heap_pop(heap_t *head);
 

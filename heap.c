@@ -20,6 +20,8 @@ typedef struct Heap {
 
 	// specific node information:
 	void *payload;
+
+	int (*destroy)(void *);
 	// weight used for deciding the min heap pointer:
 	float weight;
 } heap_node;
@@ -44,11 +46,12 @@ heap_t *heap_create(int (*compare)(float, float)) {
 	return emptyHeap;
 }
 
-void *heap_push(heap_t *head, void *payload, float weight) {
+void *heap_push(heap_t *head, void *payload, float weight, int (*destroy)(void *)) {
 	heap_node *heapNode = malloc(sizeof(heap_node));
 
 	// initialize all parameters in heapNode:
 	heapNode->payload = payload;
+	heapNode->destroy = destroy;
 	heapNode->weight = weight;
 
 	heapNode->marked = 0;
@@ -262,6 +265,9 @@ int METAheap_destroy(heap_node *start) {
 			METAheap_destroy(start->child);
 
 		buffer = start->heap__right;
+		if (start->destroy)
+			start->destroy(start->payload);
+
 		free(start);
 		start = buffer;
 	} while (start != initialNode);

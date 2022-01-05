@@ -7,18 +7,15 @@
 
 const int MAX_DIST = 3;
 
-const float PER_WEIGHT = 0.6;
-const float PER_DIST = 0.4;
-
 int compare(float num1, float num2) {
 	return num1 < num2;
 }
 
 float calcWeight(int trie_weight, int word_dist) {
-	return ((word_dist + 1) * PER_DIST) / (trie_weight * PER_WEIGHT);
+	return (word_dist + 1.0) / (trie_weight + 1.0);
 }
 
-int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *curr_word, int dist);
+int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, int query_length, char *curr_word, int dist);
 
 int main() {
 	// define head
@@ -32,9 +29,7 @@ int main() {
 
 	char *start = malloc(sizeof(char));
 	start[0] = '\0';
-	suggest(head, heap, "c", 0, start, 0);
-
-	printf("Test %s\n", (char *) heap_peek(heap));
+	suggest(head, heap, "cat", 0, 3, start, 0);
 
 	destruct(head);
 	heap_destroy(&heap);
@@ -42,8 +37,10 @@ int main() {
 	return 0;
 }
 
-int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *curr_word, int dist) {
+int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, int query_length, char *curr_word, int dist) {
 	// ensure the dist is reasonable (base case)
+	if (MAX_DIST <= dist)
+		return 0;
 
 	// go through the trie possible children
 	// recursively test pathes that are strong
@@ -55,10 +52,12 @@ int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *cur
 			strcpy(new_word, curr_word);
 
 			// add the new character
-			new_word[query_curr_pos + 1] = (char) 97 + try_path;
+			new_word[query_curr_pos] = (char) 97 + try_path;
+			new_word[query_curr_pos + 1] = '\0';
 
 			// calculate new distance
-			int new_dist = dist + ((int) query[query_curr_pos] == 97 + try_path ? 0 : 1);
+			printf("trying to change dist %d %d %d\n", dist, query_curr_pos >= query_length, (int) query[query_curr_pos] == 97 + try_path);
+			int new_dist = dist + ((query_curr_pos >= query_length || (int) query[query_curr_pos] == 97 + try_path) ? 0 : 1);
 
 			// only push to heap if there is a weight at this word
 			if (trie->children[try_path]->weight) {
@@ -73,8 +72,9 @@ int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, char *cur
 			}
 
 			// recur
-			suggest(trie->children[try_path], heap, query, query_curr_pos + 1, new_word, new_dist);
+			suggest(trie->children[try_path], heap, query, query_curr_pos + 1, query_length, new_word, new_dist);
 		}
 	}
+
 	return 0;
 }

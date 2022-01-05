@@ -36,8 +36,124 @@
 				justify-content: center;
 				background: var(--color-bg);
 			}
+
+			#typetracker {
+				background: #fff;
+				width: 80%;
+				height: 100px;
+				border: none;
+				border-radius: 10px;
+
+				display: flex;
+				justify-content: center;
+
+				box-shadow: rgba(0, 0, 0, 0.3) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
+			}
+
+			#inputbox {
+				width: 0;
+				border: none;
+				outline: none;
+			}
+
+			.type {
+				width: 50%;
+
+				overflow-x: hidden;
+
+				display: flex;
+				align-items: center;
+			}
+
+			.type span {
+				font-size: 35px;
+			}
+
+			.pre.type span {
+				text-align: left;
+				padding-right: 8px;
+			}
+
+			.post {
+				display: flex;
+				justify-content: flex-end;
+			}
+
+			.post.type span {
+				text-align: right;
+				padding-left: 8px;
+			}
 		</style>
 
-		Hi there
+		<div id="typetracker">
+			<div class="post type">
+				<span class="is_current"></span>
+			</div>
+			<input id="inputbox"/>
+			<div class="pre type">
+				<span full_word="type">type</span>
+				<span full_word="test">test</span>
+			</div>
+		</div>
+
+		<script>
+			$(".type span").click(function() {
+				$("#inputbox").select();
+			});
+
+			let current_input_length = 0;
+
+			$("#inputbox").keyup(function() {
+				let current_val = $(this).val();
+
+				// otherwise update most recent span in post type
+				let current_pre_value = $(".pre.type span:first-child").html();
+				let current_post_value = $(".post.type span:last-child").html();
+
+				// space means new word
+				if (current_val[current_val.length - 1] == " ") {
+					// update post type IF current_val has text in it
+					if (current_val[0] != " ") {
+						$(".post.type span:last-child").removeClass("is_current");
+						$(".post.type").append("<span class='is_current'></span>");
+						$(".pre.type span:first-child").remove();
+					}
+
+					current_input_length = 0;
+					$(this).val("");
+				} else if (current_val.length < current_input_length) { // deletion
+					// check full_word
+					let full_word = $(".pre.type span:first-child").attr("full_word");
+
+					if (current_post_value[current_post_value.length - 1] == full_word[current_post_value.length - 1]) {
+						// pass value over
+						$(".pre.type span:first-child").html(current_post_value[current_post_value.length - 1] + current_pre_value);
+					}
+
+					current_post_value = current_post_value.slice(0, current_post_value.length - 1);
+
+					// check is_wrong
+					if (current_post_value == full_word.slice(0, current_post_value.length))
+						$(".post.type span:last-child").removeClass("is_wrong");
+
+					$(".post.type span:last-child").html(current_post_value);
+
+					current_input_length--;
+				} else {
+
+					// if the current_val is different than current_pre_value
+					// something is wrong
+					if (current_val[current_val.length - 1] == current_pre_value[0]) {
+						$(".post.type span:last-child").html(current_post_value + current_val[current_val.length - 1]);
+						$(".pre.type span:first-child").html(current_pre_value.slice(1));
+					} else {
+						$(".post.type span:last-child").addClass("is_wrong");
+						$(".post.type span:last-child").html(current_post_value + current_val[current_val.length - 1]);
+					}
+
+					current_input_length++;
+				}
+			});
+		</script>
 	</body>
 </html>

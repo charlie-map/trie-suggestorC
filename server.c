@@ -18,6 +18,10 @@
 #define BACKLOG 10    // how many pending connections will queue
 #define MAXLINE 4096 // max read from socket HTTP request
 
+int compare(float num1, float num2) {
+	return num1 < num2;
+}
+
 void sigchld_handler(int s) {
 	// waitpid() might overwrite errno, so we save and restore it:
 	int saved_errno = errno;
@@ -226,7 +230,11 @@ int send_page(int *new_fd, char *request) {
 	char *res;
 	// homepage
 	if (strcmp(request, "/") == 0)
-		res = readpage("yourhomepage.html file here!", res_length);
+		res = readpage("./views/homepage.html", res_length);
+	else if (strcmp(request, "/typingtest") == 0)
+		res = readpage("./views/type.html", res_length);
+	else
+		res = readpage("./views/error.html", res_length);
 
 	// use for making sure the entire page is sent
 	while ((res_sent = send(*new_fd, res, *res_length, 0)) < *res_length);

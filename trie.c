@@ -44,6 +44,7 @@ int insert(Trie *trie, char *value) {
 		else
 			return 0;
 	}
+
 	// access the trie at that children, if it doesn't exist,
 	// make a new sub trie:
 	if (!trie->children[childPoint]) {

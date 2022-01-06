@@ -94,6 +94,10 @@ char *readpage(char *filename, int *length) {
 	return returnstring;
 }
 
+char *getword() {
+	
+}
+
 void close_threads() {
 
 }
@@ -182,19 +186,6 @@ int main() {
 }
 
 char *parse_http(char *full_req) {
-	// regex_t regex;
-	// int regerr_check;
-
-	// regerr_check = regcomp(&regex, " /w+", 0);
-
-	// size_t nmatch = 2;
-	// regmatch_t pmatch[2];
-
-	// int regger_check = regexec(&regex, full_req, nmatch, pmatch, 0);
-
-	// if (pmatch[1].rm_so) {
-		
-	// }
 
 	int find_req_url = 0;
 
@@ -233,6 +224,8 @@ int send_page(int *new_fd, char *request) {
 		res = readpage("./views/homepage.html", res_length);
 	else if (strcmp(request, "/typingtest") == 0)
 		res = readpage("./views/type.html", res_length);
+	else if (strcmp(request, "/newword") == 0)
+		res = getword();
 	else
 		res = readpage("./views/error.html", res_length);
 

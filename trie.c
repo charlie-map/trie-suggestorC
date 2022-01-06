@@ -37,6 +37,13 @@ Trie *childTrie() {
 int insert(Trie *trie, char *value) {
 	int childPoint = (((int) *value) - 97); // find position in children
 
+	if (childPoint < 97 && childPoint > 122) { // not a supported character
+		// try moving to next character
+		if (*(++value))
+			return insert(trie, value);
+		else
+			return 0;
+	}
 	// access the trie at that children, if it doesn't exist,
 	// make a new sub trie:
 	if (!trie->children[childPoint]) {

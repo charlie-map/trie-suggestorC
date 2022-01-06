@@ -18,6 +18,8 @@
 				--color-bg: #0d7377;
 				--color-blue: #d44f0e;
 				--color-shadow: #211842;
+				--color-bright-blue: #14ffec;
+				--color-medium-blue: #11bdaf;
 			}
 
 			* {
@@ -45,15 +47,63 @@
 				border-radius: 10px;
 
 				display: flex;
+				align-items: center;
 				justify-content: center;
 
 				box-shadow: rgba(0, 0, 0, 0.3) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
+			}
+
+			#timebar {
+				content: '';
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+
+				border-top-left-radius: 25px;
+				border-top-right-radius: 25px;
+
+				height: 7px;
+				background: var(--color-blue);
+			}
+
+			#timer {
+				content: '';
+				display: block;
+				position: absolute;
+				top: 7px;
+				left: 4px;
+
+				width: 115px;
+				height: 40px;
+
+				font-size: 20px;
 			}
 
 			#inputbox {
 				width: 0;
 				border: none;
 				outline: none;
+			}
+
+			#blinker {
+				width: 2px;
+				height: 50px;
+				background: #fff;
+			}
+
+			#blinker.selected {
+				animation:
+					typeblink 1.2s step-end infinite;
+			}
+
+			#blinker.typing {
+				background: #000;
+			}
+
+			@keyframes typeblink {
+				from, to { background: #000; }
+				50% { background: #fff; }
 			}
 
 			.type {
@@ -69,6 +119,15 @@
 				font-size: 35px;
 			}
 
+			.type span.is_current {
+				color: var(--color-medium-blue) !important;
+			}
+
+			.type span.is_wrong {
+				color: grey;
+				text-decoration: line-through;
+			}
+
 			.pre.type span {
 				text-align: left;
 				padding-right: 8px;
@@ -82,48 +141,110 @@
 			.post.type span {
 				text-align: right;
 				padding-left: 8px;
+				color: grey;
 			}
 		</style>
 
 		<div id="typetracker">
+			<div id="timebar"></div>
+			<div id="timer"></div>
 			<div class="post type">
 				<span class="is_current"></span>
 			</div>
 			<input id="inputbox"/>
+			<div id="blinker"></div>
 			<div class="pre type">
 				<span full_word="type">type</span>
 				<span full_word="test">test</span>
+				<span full_word="is">is</span>
+				<span full_word="this">this</span>
+				<span full_word="working">working</span>
 			</div>
 		</div>
 
 		<script>
-			$(".type span").click(function() {
+			$("#timebar").css("width", "100%");
+			$(".type span").on("click", blinkerselect);
+
+			let current_timebar_radius = 25;
+			let timer = 0;
+
+			function changetimebar() {
+				$("#timebar").css("width", ((60 - timer) / 60) * 100 + "%");
+
+				current_timebar_radius -= current_timebar_radius < 0 ? 0 : 3;
+
+				$("#timebar").css("border-top-right-radius", current_timebar_radius + "px");
+
+				timer += 0.1;
+
+				let calc_seconds = 60 - Math.round(timer);
+
+				$("#timer").html((calc_seconds < 10 ? "0" : "") + calc_seconds + " second" + (calc_seconds == 1 ? "" : "s"));
+
+				if (timer < 60)
+					setTimeout(changetimebar, 100);
+				else {
+					$("#timerbar").animate({
+						width: "100%",
+					}, 1000, function() {
+						$("#timerbar").css("border-top-right-radius", "25px");
+					});
+				}
+			}
+
+			function blinkerselect() {
 				$("#inputbox").select();
+				$("#blinker").addClass("selected");
+			}
+
+			blinkerselect();
+
+			$("#inputbox").focusout(function() {
+				$("#blinker").removeClass("selected");
 			});
+
+			function turnon() {
+				$("#blinker").removeClass("typing");
+				$("#blinker").addClass("selected");
+			}
 
 			let current_input_length = 0;
 
 			$("#inputbox").keyup(function() {
-				let current_val = $(this).val();
+				if (timer == 0)
+					changetimebar(); // start timer
+
+				// remove typing animation
+				$("#blinker").addClass("typing");
+				$("#blinker").removeClass("selected");
+				setTimeout(turnon, 100);
+
+				let current_char = $(this).val();
+				$(this).val("");
 
 				// otherwise update most recent span in post type
 				let current_pre_value = $(".pre.type span:first-child").html();
 				let current_post_value = $(".post.type span:last-child").html();
 
 				// space means new word
-				if (current_val[current_val.length - 1] == " ") {
-					// update post type IF current_val has text in it
-					if (current_val[0] != " ") {
+				if (current_char == " ") {
+					// update post type IF current_char has text in it
+					if (current_post_value.length) {
 						$(".post.type span:last-child").removeClass("is_current");
 						$(".post.type").append("<span class='is_current'></span>");
+
+						$(".post.type span:last-child").on("click", blinkerselect);
 						$(".pre.type span:first-child").remove();
 					}
 
 					current_input_length = 0;
-					$(this).val("");
-				} else if (current_val.length < current_input_length) { // deletion
+				} else if (current_char.length == 0 && current_input_length >= 0) { // deletion
 					// check full_word
 					let full_word = $(".pre.type span:first-child").attr("full_word");
+
+					if (!full_word)
+						return;
 
 					if (current_post_value[current_post_value.length - 1] == full_word[current_post_value.length - 1]) {
 						// pass value over
@@ -139,16 +260,16 @@
 					$(".post.type span:last-child").html(current_post_value);
 
 					current_input_length--;
-				} else {
+				} else if (current_char.length) {
 
-					// if the current_val is different than current_pre_value
+					// if the current_char is different than current_pre_value
 					// something is wrong
-					if (current_val[current_val.length - 1] == current_pre_value[0]) {
-						$(".post.type span:last-child").html(current_post_value + current_val[current_val.length - 1]);
+					if (current_pre_value && current_char == current_pre_value[0]) {
+						$(".post.type span:last-child").html(current_post_value + current_char);
 						$(".pre.type span:first-child").html(current_pre_value.slice(1));
 					} else {
 						$(".post.type span:last-child").addClass("is_wrong");
-						$(".post.type span:last-child").html(current_post_value + current_val[current_val.length - 1]);
+						$(".post.type span:last-child").html(current_post_value + current_char);
 					}
 
 					current_input_length++;

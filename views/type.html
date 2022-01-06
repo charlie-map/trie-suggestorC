@@ -159,6 +159,8 @@
 				<span full_word="is">is</span>
 				<span full_word="this">this</span>
 				<span full_word="working">working</span>
+				<span full_word="haha">haha</span>
+				<span full_word="success">success</span>
 			</div>
 		</div>
 
@@ -167,6 +169,7 @@
 			$(".type span").on("click", blinkerselect);
 
 			let current_timebar_radius = 25;
+			let current_timebar_height = 7;
 			let timer = 0;
 
 			function changetimebar() {
@@ -175,6 +178,10 @@
 				current_timebar_radius -= current_timebar_radius < 0 ? 0 : 3;
 
 				$("#timebar").css("border-top-right-radius", current_timebar_radius + "px");
+
+				if (timer >= 58.6)
+					current_timebar_height -= 0.5;
+				$("#timebar").css("height", current_timebar_height + "px");
 
 				timer += 0.1;
 
@@ -248,8 +255,6 @@
 						// pass value over
 
 						$(current_pre_element).html(current_post_value[current_post_value_length - 1] + current_pre_value);
-					
-						current_word_length--;
 					}
 
 					current_post_value = current_post_value.slice(0, current_post_value_length - 1);
@@ -262,12 +267,12 @@
 					// update post element
 					$(current_post_element).html(current_post_value);
 
+					current_word_length--;
+
 					return;
 				}
 
 				stall_out = current_char.length - 1;
-
-				console.log(current_char);
 
 				// loop over incoming chars
 				for (let loop_char = 0; loop_char < current_char.length; loop_char++) {
@@ -281,10 +286,14 @@
 							$(current_pre_element).html(current_pre_value);
 							$(current_post_element).html(current_post_value);
 
+							let is_wrong_check = current_post_value == full_pre_word ? 0 : 1;
+
 							current_post_value = "";
 							current_post_value_length = 0;
 
 							$(current_post_element).removeClass("is_current");
+							if (is_wrong_check)
+								$(current_post_element).addClass("is_wrong");
 							$(".post.type").append("<span class='is_current'></span>");
 
 							current_post_element = $(".post.type span:last-child");
@@ -302,7 +311,6 @@
 
 						current_word_length = 0;
 					} else {
-						console.log(current_char, current_pre_value);
 						// if the current_char is different than current_pre_value
 						// something is wrong
 						if (current_char[loop_char] == current_pre_value[0])

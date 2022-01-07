@@ -19,6 +19,41 @@ float calcWeight(int trie_weight, int word_dist) {
 	return (trie_weight * PERCENT_WEIGHT) - (word_dist * PERCENT_DIST);
 }
 
+int load_trie(Trie *trie, char *filename) {
+	FILE *file = fopen(filename, "r");
+
+	if (!file) {
+		return 0;
+	}
+
+	size_t size = sizeof(char) * 80;
+	char *reader = malloc(size);
+
+	int counter = 0;
+
+	while (getline(&reader, &size, file) != -1) {
+
+		char *word = malloc(sizeof(char) * 20);
+		int word_length = 0;
+		int word_freq = 0;
+		int article_num = 0;
+
+		sscanf(reader, "%s %d %d %d", word, &word_length, &word_freq, &article_num);
+
+		// insert per word_freq (cap at 200,000)
+		word_freq = word_freq > 200000 ? 200000 : word_freq;
+		for (int trie_insert = 0; trie_insert < word_freq; trie_insert++) {
+			printf("count %s %d\n", word, counter);
+			counter++;
+			insert(trie, word);
+		}
+
+		free(word);
+	}
+
+	free(reader);
+}
+
 int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, int query_length, char *curr_word, int dist);
 
 int main() {
@@ -26,25 +61,20 @@ int main() {
 	Trie *head = childTrie();
 	heap_t *heap = heap_create(compare);
 
-	insert(head, "cat");
-	insert(head, "cats");
-	insert(head, "cats");
-	insert(head, "cta");
-	insert(head, "act");
-	insert(head, "acts");
-	insert(head, "acts");
-	insert(head, "ca");
+	load_trie(head, "words.txt");
 
-	char *start = malloc(sizeof(char));
-	start[0] = '\0';
-	suggest(head, heap, "c", 0, 3, start, 0);
+	// return 0;
 
-	free(start);
+	// char *start = malloc(sizeof(char));
+	// start[0] = '\0';
+	// suggest(head, heap, "c", 0, 3, start, 0);
 
-	char *option1 = (char *) heap_pop(heap);
-	printf("best option %s\n", option1);
-	free(option1);
-	printf("second %s\n", (char *) heap_peek(heap));
+	// free(start);
+
+	// char *option1 = (char *) heap_pop(heap);
+	// printf("best option %s\n", option1);
+	// free(option1);
+	// printf("second %s\n", (char *) heap_peek(heap));
 
 	destruct(head);
 	heap_destroy(&heap);

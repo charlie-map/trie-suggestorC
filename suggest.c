@@ -32,26 +32,21 @@ int load_trie(Trie *trie, char *filename) {
 	int counter = 0;
 
 	while (getline(&reader, &size, file) != -1) {
+		char *word = malloc(sizeof(char) * 30);
+		double word_freq = 0;
 
-		char *word = malloc(sizeof(char) * 20);
-		int word_length = 0;
-		int word_freq = 0;
-		int article_num = 0;
+		sscanf(reader, "%s %lf", word, &word_freq);
 
-		sscanf(reader, "%s %d %d %d", word, &word_length, &word_freq, &article_num);
-
-		// insert per word_freq (cap at 200,000)
-		word_freq = word_freq > 200000 ? 200000 : word_freq;
-		for (int trie_insert = 0; trie_insert < word_freq; trie_insert++) {
-			printf("count %s %d\n", word, counter);
-			counter++;
-			insert(trie, word);
-		}
+		insert(trie, word, word_freq, 0);
+		counter += word_freq;
 
 		free(word);
 	}
 
 	free(reader);
+	fclose(file);
+
+	return 0;
 }
 
 int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, int query_length, char *curr_word, int dist);
@@ -61,18 +56,16 @@ int main() {
 	Trie *head = childTrie();
 	heap_t *heap = heap_create(compare);
 
-	load_trie(head, "words.txt");
+	load_trie(head, "norvigclean.txt");
 
-	// return 0;
+	char *start = malloc(sizeof(char));
+	start[0] = '\0';
+	suggest(head, heap, "hen", 0, 3, start, 0);
 
-	// char *start = malloc(sizeof(char));
-	// start[0] = '\0';
-	// suggest(head, heap, "c", 0, 3, start, 0);
+	free(start);
 
-	// free(start);
-
-	// char *option1 = (char *) heap_pop(heap);
-	// printf("best option %s\n", option1);
+	char *option1 = (char *) heap_peek(heap);
+	printf("best option %s\n", option1);
 	// free(option1);
 	// printf("second %s\n", (char *) heap_peek(heap));
 
@@ -99,7 +92,7 @@ int suggest(Trie *trie, heap_t *heap, char *query, int query_curr_pos, int query
 		// update curr_word and dist on recursive call
 		if (trie->children[try_path]) {
 			// create a new word and copy over curr_word
-			char *new_word = malloc(sizeof(curr_word) + sizeof(char));
+			char *new_word = malloc(sizeof(char) * (query_curr_pos + 2));
 			strcpy(new_word, curr_word);
 
 			// add the new character

@@ -34,13 +34,13 @@ Trie *childTrie() {
 			The output will just be a register of the ocmpletion of the process,
 			but when looking at the trie, it will now have new updated values
 */
-int insert(Trie *trie, char *value) {
+int insert(Trie *trie, char *value, double value_weight, int depth) {
 	int childPoint = (((int) *value) - 97); // find position in children
 
-	if (childPoint < 97 && childPoint > 122) { // not a supported character
+	if (childPoint < 0 || childPoint > 25) { // not a supported character
 		// try moving to next character
 		if (*(++value))
-			return insert(trie, value);
+			return insert(trie, value, value_weight, depth + 1);
 		else
 			return 0;
 	}
@@ -56,11 +56,12 @@ int insert(Trie *trie, char *value) {
 	// check for more characters after our current one, if there aren't
 	// any more, then we want to go ahead and add to the weight:
 	if (!(*(++value))) {
-		trie->children[childPoint]->weight++;
+		
+		trie->children[childPoint]->weight += value_weight ? value_weight : 1;
 		return 0;
 	}
 
-	return insert(trie->children[childPoint], value);
+	return insert(trie->children[childPoint], value, value_weight, depth + 1);
 }
 
 /*

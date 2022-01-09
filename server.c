@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
+#include <math.h>
 #include <pthread.h>
 
 // all socket related packages
@@ -14,9 +16,29 @@
 #include <unistd.h>
 #include <netdb.h>
 
+#include "trie.h"
+
 #define PORT "6969" // the port users will connect to
 #define BACKLOG 10    // how many pending connections will queue
 #define MAXLINE 4096 // max read from socket HTTP request
+
+// used for passing info into each pthread
+typedef struct AddrInfo {
+	Trie *trie_head;
+	int socket_ptr; // just need the file point
+	int *thread_status;
+} meta_info_t;
+
+meta_info_t *meta_info_create(Trie *trie, int socket_ptr, int *thread_status_ptr) {
+	meta_info_t *new_meta_info = malloc(sizeof(meta_info_t));
+
+	// insert all data
+	new_meta_info->trie_head = trie;
+	new_meta_info->socket_ptr = socket_ptr;
+	new_meta_info->thread_status = thread_status_ptr;
+
+	return new_meta_info;
+}
 
 int compare(float num1, float num2) {
 	return num1 < num2;
@@ -94,18 +116,160 @@ char *readpage(char *filename, int *length) {
 	return returnstring;
 }
 
-char *getword() {
-	
+int load_trie(Trie *trie, char *filename) {
+	FILE *file = fopen(filename, "r");
+
+	if (!file) {
+		return 0;
+	}
+
+	size_t size = sizeof(char) * 80;
+	char *reader = malloc(size);
+
+	int counter = 0;
+
+	while (getline(&reader, &size, file) != -1) {
+		char *word = malloc(sizeof(char) * 30);
+		double word_freq = 0;
+
+		sscanf(reader, "%s %lf", word, &word_freq);
+
+		insert(trie, word, word_freq, 0);
+		counter += word_freq;
+
+		free(word);
+	}
+
+	free(reader);
+	fclose(file);
+
+	return 0;
 }
 
-void close_threads() {
+char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
+	// the following "random" selection chooses a random start position,
+	// gives the current "random"ly selected letter a weight, then
+	// other children/letters pull on the current position in a certain
+	// direction.
+	double small_random_number = (double) rand() / (double) RAND_MAX;
 
+	int start_character = (int) floor(((float) rand() / (float) RAND_MAX) * 26.0);
+	double start_character_weight = (rand() * 0.2) + (trie->children[start_character] ?
+		trie->children[start_character]->weight : 0);
+
+	// look through children weights and "pull" on the start character
+	// define weights for each side of start_character
+	double left_weight = 0, right_weight = 0;
+	int left_index = start_character - 1, right_index = start_character + 1;
+
+	while(left_index > -1 && right_index < 26) {
+		// certain cases to look at:
+		/*
+			start_character child does not exist,
+			-- purposefully pull to the nearest existing index
+				if both left_index and right_index, choose higher
+				if same value at both, random
+
+			otherwise, start tug of war
+		*/
+
+		if (!trie->children[start_character]) {
+			// the following represents the above "start_character child does not exist" case:
+			start_character = !trie->children[left_index] && !trie->children[right_index] ? -1 :
+				!trie->children[left_index] ? right_index : !trie->children[right_index] ? left_index :
+				trie->children[left_index]->weight < trie->children[right_index]->weight ?
+				right_index : trie->children[left_index]->weight == trie->children[right_index]->weight ?
+				(double) rand() < RAND_MAX * 0.5 ? left_index : right_index : left_index;
+		
+			if (start_character == -1)
+				break;
+
+			// add new weight to the current start_character_weight
+			start_character_weight += (trie->children[start_character] ?
+				trie->children[start_character]->weight : 0);
+
+			continue;
+		}
+
+		left_weight += left_index >= 0 && trie->children[left_index] ? trie->children[left_index]->weight : 0;
+		right_weight += right_index <= 25 && trie->children[right_index] ? trie->children[right_index]->weight : 0;
+
+		if (left_weight > start_character_weight) {
+			// if this is true, move start_character until
+			// it reaches a value that exists
+			start_character_weight += left_weight;
+			left_weight = 0;
+
+			// note that this while loop would never occur in less there
+			// is some value to the left of start_character
+			// due to the fact that left_weight can only have a value if
+			// there is some child available
+			do {
+				start_character--;
+			} while (!trie->children[start_character]);
+		}
+
+		if (right_weight > start_character_weight) {
+			start_character_weight += right_weight;
+			right_weight = 0;
+
+			do {
+				start_character++;
+			} while (!trie->children[start_character]);
+		}
+
+		left_index -= left_index > -1 ? 1 : 0;
+		right_index += right_index < 26 ? 1 : 0;
+	}
+
+	printf("index %d with char index %d\n", start_character, curr_index);
+
+	if (start_character == -1) // no children
+		return res; // completed word
+
+	res[curr_index] = (char) (start_character + 97);
+
+	// if this child in the trie has a weight, randomly decide to continue
+	// or not (slight bias towards continuing)
+	printf("check weight %s %lf\n", res, trie->children[start_character]->weight);
+	if (trie->children[start_character]->weight) {
+		// 70% chance of continuing
+		float continue_test = (float) rand() / (float) RAND_MAX;
+
+		printf("test continue %1.3f\n", continue_test);
+
+		if (continue_test > 0.85) // end
+			return res;
+
+		// otherwise continue
+	}
+
+	// check for resize
+	curr_index++;
+	if (curr_index == max_length) {
+		*max_length *= 2;
+		res = realloc(res, sizeof(char) * *max_length);
+	}
+
+	return getword(trie->children[start_character], res, curr_index, max_length);
 }
 
 int main() {
+	Trie *trie = childTrie();
+	load_trie(trie, "norvigclean.txt");
+
+	srand(time(NULL));
+
+	char *test_word = malloc(sizeof(char) * 8);
+	memset(test_word, '\0', 8);
+	int *max_length = malloc(sizeof(int));
+	*max_length = 8;
+	printf("test: %s\n", getword(trie, test_word, 0, max_length));
 
 	// connection stuff
-	int *sock_fd = malloc(sizeof(int)); // listen on sock_fd
+	int sock_fd; // listen on sock_fd
+	int *thread_status = malloc(sizeof(int)); // checks on if ALL threads should be closed
+	*thread_status = 1; // Good to go!
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_storage their_addr; // connector's address information
 	struct sigaction sa;
@@ -133,20 +297,20 @@ int main() {
 
 	// find a working socket
 	for (p = servinfo; p != NULL; p = p->ai_next) {
-		if ((*sock_fd = socket(p->ai_family, p->ai_socktype,
+		if ((sock_fd = socket(p->ai_family, p->ai_socktype,
 			p->ai_protocol)) == -1) {
 			perror("server: socket");
 			continue;
 		}
 
-		if (setsockopt(*sock_fd, SOL_SOCKET, SO_REUSEADDR, &yes,
+		if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &yes,
 			sizeof(int)) == -1) {
 			perror("setsockopt");
 			exit(1);
 		}
 
-		if (bind(*sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
-			close(*sock_fd);
+		if (bind(sock_fd, p->ai_addr, p->ai_addrlen) == -1) {
+			close(sock_fd);
 			perror("server: bind");
 			continue;
 		}
@@ -155,7 +319,6 @@ int main() {
 	}
 
 
-	printf("%d check\n", *sock_fd);
 	freeaddrinfo(servinfo); // all done with this structure
 
 	if (p == NULL)  {
@@ -163,24 +326,29 @@ int main() {
 		exit(1);
 	}
 
-	if (listen(*sock_fd, BACKLOG) == -1) {
+	if (listen(sock_fd, BACKLOG) == -1) {
 		perror("listen");
 		exit(1);
 	}
 
 	printf("server go vroom\n");
 
+	meta_info_t *acceptor_data = meta_info_create(trie, sock_fd, thread_status);
+
 	// split acceptor
 	pthread_t accept_thread;
-	int check = pthread_create(&accept_thread, NULL, &acceptor_function, sock_fd);
+	int check = pthread_create(&accept_thread, NULL, &acceptor_function, acceptor_data);
 
 	// wait until a user tries to close the server
 	while(getchar() != '0');
-	close_threads();
+	// to close all client threads, use the thread_status pointer
+	*thread_status = 0; // off!
 	pthread_cancel(accept_thread);
 	pthread_join(accept_thread, NULL);
 
-	free(sock_fd);
+	destruct(trie);
+	free(thread_status);
+	free(acceptor_data);
 
 	return 0;
 }
@@ -214,7 +382,7 @@ char *parse_http(char *full_req) {
 	return req_url;
 }
 
-int send_page(int *new_fd, char *request) {
+int send_page(int new_fd, char *request, Trie *trie_head) {
 	int *res_length = malloc(sizeof(int)), res_sent;
 	*res_length = 0;
 
@@ -224,28 +392,36 @@ int send_page(int *new_fd, char *request) {
 		res = readpage("./views/homepage.html", res_length);
 	else if (strcmp(request, "/typingtest") == 0)
 		res = readpage("./views/type.html", res_length);
-	else if (strcmp(request, "/newword") == 0)
-		res = getword();
-	else
+	else if (strcmp(request, "/newword") == 0) {
+		*res_length = 8;
+		res = malloc(sizeof(char) * *res_length);
+		memset(res, '\0', *res_length);
+
+		getword(trie_head, res, 0, *res_length);
+	} else
 		res = readpage("./views/error.html", res_length);
 
 	// use for making sure the entire page is sent
-	while ((res_sent = send(*new_fd, res, *res_length, 0)) < *res_length);
+	while ((res_sent = send(new_fd, res, *res_length, 0)) < *res_length);
 
 	free(res_length);
 	free(res);
+
+	return 0;
 }
 
 void *connection(void *addr_input) {
-	int *new_fd = malloc(sizeof(int));
-	*new_fd = *(int *) addr_input;
+	meta_info_t *client_data = (meta_info_t *) addr_input;
+
+	int new_fd = client_data->socket_ptr;
 
 	int recv_res = 1;
 	char *buffer = malloc(sizeof(char) * MAXLINE);
 	int buffer_len = MAXLINE;
 
 	// make a continuous loop for new_fd while they are still alive
-	while (recv_res = recv(*new_fd, buffer, buffer_len, 0)) {
+	// as well as checking that the server is running
+	while (recv_res = recv(new_fd, buffer, buffer_len, 0) && *client_data->thread_status) {
 		if (recv_res == -1) {
 			perror("receive: ");
 			continue;
@@ -256,19 +432,27 @@ void *connection(void *addr_input) {
 
 		// otherwise we have data!
 		char *request = parse_http(buffer);
-		printf("test %s\n", request);
+		send_page(new_fd, request, client_data->trie_head);
+	}
 
-		send_page(new_fd, request);
-	}	
+	// if the close occurs due to thread_status, send an error page
+	if (!*client_data->thread_status)
+		send_page(new_fd, "/error", client_data->trie_head);
 
-	close(*new_fd);
+	close(new_fd);
 	free(buffer);
-	free(new_fd);
+	free(client_data);
+
+	pthread_t *retval;
+	// close thread
+	pthread_exit(retval);
 }
 
 void *acceptor_function(void *sock_ptr) {
-	int sock_fd = *(int *) sock_ptr;
-	int *new_fd = malloc(sizeof(int));
+	meta_info_t *acceptor_data = (meta_info_t *) sock_ptr;
+
+	int sock_fd = acceptor_data->socket_ptr;
+	int new_fd;
 	char s[INET6_ADDRSTRLEN];
 	struct sockaddr_storage their_addr; // connector's address information
 	socklen_t sin_size;
@@ -277,8 +461,8 @@ void *acceptor_function(void *sock_ptr) {
 
 	while (1) {
 		sin_size = sizeof(their_addr);
-		*new_fd = accept(sock_fd, (struct sockaddr *) &their_addr, &sin_size);
-		if (*new_fd == -1) {
+		new_fd = accept(sock_fd, (struct sockaddr *) &their_addr, &sin_size);
+		if (new_fd == -1) {
 			perror("accept");
 			continue;
 		}
@@ -288,12 +472,13 @@ void *acceptor_function(void *sock_ptr) {
 		s, sizeof s);
 		printf("server: got connection from %s\n", s);
 
+		// create new meta_info
+		meta_info_t *client_socket_data = meta_info_create(acceptor_data->trie_head, new_fd, acceptor_data->thread_status);
+
 		// at this point we can send the user into their own thread
 		pthread_t socket;
-		pthread_create(&socket, NULL, &connection, new_fd);
+		pthread_create(&socket, NULL, &connection, client_socket_data);
 	}
-
-	free(new_fd);
 
 	return 0;
 }

@@ -3,6 +3,7 @@
 
 typedef struct TrieS {
 	double weight;
+	double next_weight;
 	int childCount; // keeps track of how many children
 	// we have  so we don't have to recalculate
 	struct TrieS *children[26];

@@ -870,6 +870,10 @@
 		</div>
 
 		<script>
+			$.get("/newword", (res) => {
+				console.log("receive response", res);
+			});
+
 			let spaninfo = "Type to start";
 
 			function type(curr_string, curr_index, element) {

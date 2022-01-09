@@ -146,112 +146,65 @@ int load_trie(Trie *trie, char *filename) {
 	return 0;
 }
 
+// this counts the weight at this specific layer
+// and counts the weight for further down layers
+double max_weight(Trie **children) {
+	double max_sum = 0;
+
+	for (int check_sums = 0; check_sums < 26; check_sums++) {
+		if (children[check_sums])
+			max_sum += children[check_sums]->weight + children[check_sums]->next_weight;
+	}
+
+	return max_sum;
+}
+
 char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
-	// the following "random" selection chooses a random start position,
-	// gives the current "random"ly selected letter a weight, then
-	// other children/letters pull on the current position in a certain
-	// direction.
-	double small_random_number = (double) rand() / (double) RAND_MAX;
+	double max = max_weight(trie->children);
 
-	int start_character = (int) floor(((float) rand() / (float) RAND_MAX) * 26.0);
-	double start_character_weight = (rand() * 0.2) + (trie->children[start_character] ?
-		trie->children[start_character]->weight : 0);
+	double random_number0_1 = (double) rand() / (double) RAND_MAX;
+	double trie_pos = max * random_number0_1;
 
-	// look through children weights and "pull" on the start character
-	// define weights for each side of start_character
-	double left_weight = 0, right_weight = 0;
-	int left_index = start_character - 1, right_index = start_character + 1;
-
-	while(left_index > -1 && right_index < 26) {
-		// certain cases to look at:
-		/*
-			start_character child does not exist,
-			-- purposefully pull to the nearest existing index
-				if both left_index and right_index, choose higher
-				if same value at both, random
-
-			otherwise, start tug of war
-		*/
-
-		if (!trie->children[start_character]) {
-			// the following represents the above "start_character child does not exist" case:
-			start_character = !trie->children[left_index] && !trie->children[right_index] ? -1 :
-				!trie->children[left_index] ? right_index : !trie->children[right_index] ? left_index :
-				trie->children[left_index]->weight < trie->children[right_index]->weight ?
-				right_index : trie->children[left_index]->weight == trie->children[right_index]->weight ?
-				(double) rand() < RAND_MAX * 0.5 ? left_index : right_index : left_index;
-		
-			if (start_character == -1)
-				break;
-
-			// add new weight to the current start_character_weight
-			start_character_weight += (trie->children[start_character] ?
-				trie->children[start_character]->weight : 0);
-
+	// search for the random position based on trie_pos and the weights
+	// at children and next children
+	double current_weight = 0;
+	int find_pos;
+	int current_trie_next = 0; // decides if the search continues
+							   // or if the node was found
+	for (find_pos = 0; find_pos < 26; find_pos++) {
+		if (!trie->children[find_pos])
 			continue;
+		// first check weight at this specific point
+		current_weight += trie->children[find_pos]->weight;
+
+		// see if this weight jumps over trie_pos
+		if (current_weight > trie_pos) {
+			current_trie_next = 1;
+			break;
 		}
 
-		left_weight += left_index >= 0 && trie->children[left_index] ? trie->children[left_index]->weight : 0;
-		right_weight += right_index <= 25 && trie->children[right_index] ? trie->children[right_index]->weight : 0;
+		// check next weights
+		current_weight += trie->children[find_pos]->next_weight;
 
-		if (left_weight > start_character_weight) {
-			// if this is true, move start_character until
-			// it reaches a value that exists
-			start_character_weight += left_weight;
-			left_weight = 0;
-
-			// note that this while loop would never occur in less there
-			// is some value to the left of start_character
-			// due to the fact that left_weight can only have a value if
-			// there is some child available
-			do {
-				start_character--;
-			} while (!trie->children[start_character]);
-		}
-
-		if (right_weight > start_character_weight) {
-			start_character_weight += right_weight;
-			right_weight = 0;
-
-			do {
-				start_character++;
-			} while (!trie->children[start_character]);
-		}
-
-		left_index -= left_index > -1 ? 1 : 0;
-		right_index += right_index < 26 ? 1 : 0;
+		if (current_weight > trie_pos)
+			break;
 	}
 
-	printf("index %d with char index %d\n", start_character, curr_index);
+	if (find_pos >= 26) // return before trying to add
+		return res;
 
-	if (start_character == -1) // no children
-		return res; // completed word
+	res[curr_index] = (char) (find_pos + 97);
 
-	res[curr_index] = (char) (start_character + 97);
-
-	// if this child in the trie has a weight, randomly decide to continue
-	// or not (slight bias towards continuing)
-	printf("check weight %s %lf\n", res, trie->children[start_character]->weight);
-	if (trie->children[start_character]->weight) {
-		// 70% chance of continuing
-		float continue_test = (float) rand() / (float) RAND_MAX;
-
-		printf("test continue %1.3f\n", continue_test);
-
-		if (continue_test > 0.85) // end
-			return res;
-
-		// otherwise continue
-	}
-
-	// check for resize
 	curr_index++;
-	if (curr_index == max_length) {
-		*max_length *= 2;
-		res = realloc(res, sizeof(char) * *max_length);
-	}
+	*max_length += 1;
+	res = realloc(res, sizeof(char) * *max_length);
 
-	return getword(trie->children[start_character], res, curr_index, max_length);
+	res[curr_index] = '\0';
+
+	if (current_trie_next) // return
+		return res;
+
+	return getword(trie->children[find_pos], res, curr_index, max_length);
 }
 
 int main() {
@@ -259,12 +212,6 @@ int main() {
 	load_trie(trie, "norvigclean.txt");
 
 	srand(time(NULL));
-
-	char *test_word = malloc(sizeof(char) * 8);
-	memset(test_word, '\0', 8);
-	int *max_length = malloc(sizeof(int));
-	*max_length = 8;
-	printf("test: %s\n", getword(trie, test_word, 0, max_length));
 
 	// connection stuff
 	int sock_fd; // listen on sock_fd
@@ -383,7 +330,8 @@ char *parse_http(char *full_req) {
 }
 
 int send_page(int new_fd, char *request, Trie *trie_head) {
-	int *res_length = malloc(sizeof(int)), res_sent;
+	int *res_length = malloc(sizeof(int));
+	int res_sent;
 	*res_length = 0;
 
 	char *res;
@@ -393,16 +341,32 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 	else if (strcmp(request, "/typingtest") == 0)
 		res = readpage("./views/type.html", res_length);
 	else if (strcmp(request, "/newword") == 0) {
-		*res_length = 8;
-		res = malloc(sizeof(char) * *res_length);
-		memset(res, '\0', *res_length);
+		*res_length = 1;
+		res = malloc(sizeof(char));
+		char *word = malloc(sizeof(char));
+		word[0] = '\0';
 
-		getword(trie_head, res, 0, *res_length);
+		word = getword(trie_head, word, 0, res_length);
+		int page_size = snprintf(NULL, 0, "%d", *res_length);
+
+		*res_length = sizeof(char) * *res_length + sizeof(char) * (page_size + 59);
+		res = realloc(res, *res_length);
+
+		// copy in the size
+		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: %d\n\n\n", *res_length);
+		// copy in buildstring (moving the starte over by the amount currently in returnstring)
+		strcpy(res + sizeof(char) * (59 + page_size), word);
+
+		printf("send response %s\n", res);
+
+		free(word);
 	} else
 		res = readpage("./views/error.html", res_length);
 
 	// use for making sure the entire page is sent
 	while ((res_sent = send(new_fd, res, *res_length, 0)) < *res_length);
+
+	printf("sent\n");
 
 	free(res_length);
 	free(res);

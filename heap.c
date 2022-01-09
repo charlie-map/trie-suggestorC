@@ -265,8 +265,12 @@ int METAheap_destroy(heap_node *start) {
 			METAheap_destroy(start->child);
 
 		buffer = start->heap__right;
-		if (start->destroy)
+		if (start->destroy) {
+			if (strcmp((char *) start->payload, "all") == 0) {
+				printf("found all\n");
+			}
 			start->destroy(start->payload);
+		}
 
 		free(start);
 		start = buffer;

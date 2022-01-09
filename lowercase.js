@@ -9,7 +9,7 @@ let writer = fs.createWriteStream("norvigclean.txt", {
 let single_letters = [];
 
 for (let lowercaser = 0; lowercaser < norvig.length; lowercaser++) {
-	norvig[lowercaser] = norvig[lowercaser].split("\t");
+	norvig[lowercaser] = norvig[lowercaser].split(" ");
 	if (norvig[lowercaser][0].length == 1)
 		single_letters.push([norvig[lowercaser][0], norvig[lowercaser][1]]);
 

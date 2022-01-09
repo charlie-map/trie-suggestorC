@@ -12,6 +12,7 @@ Trie *childTrie() {
 	}
 
 	childTrie->weight = 0;
+	childTrie->next_weight = 0;
 	childTrie->childCount = 0;
 
 	return childTrie;
@@ -39,9 +40,10 @@ int insert(Trie *trie, char *value, double value_weight, int depth) {
 
 	if (childPoint < 0 || childPoint > 25) { // not a supported character
 		// try moving to next character
-		if (*(++value))
+		if (*(++value)) {
+			trie->next_weight += value_weight;
 			return insert(trie, value, value_weight, depth + 1);
-		else
+		} else
 			return 0;
 	}
 
@@ -56,11 +58,12 @@ int insert(Trie *trie, char *value, double value_weight, int depth) {
 	// check for more characters after our current one, if there aren't
 	// any more, then we want to go ahead and add to the weight:
 	if (!(*(++value))) {
-		
+
 		trie->children[childPoint]->weight += value_weight ? value_weight : 1;
 		return 0;
 	}
 
+	trie->next_weight += value_weight;
 	return insert(trie->children[childPoint], value, value_weight, depth + 1);
 }
 

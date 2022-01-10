@@ -180,7 +180,6 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 
 		// see if this weight jumps over trie_pos
 		if (current_weight > trie_pos) {
-			printf("found end weight %lf\n", trie->children[find_pos]->weight);
 			current_trie_next = 1;
 			break;
 		}
@@ -188,15 +187,11 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 		// check next weights
 		current_weight += trie->children[find_pos]->next_weight;
 
-		if (current_weight > trie_pos) {
-			printf("found next weight %lf\n", trie->children[find_pos]->next_weight);
+		if (current_weight > trie_pos)
 			break;
-		}
 	}
 
-	printf("current position %s: %d\n", res, current_trie_next);
-
-	if (find_pos >= 26) // return before trying to add
+	if (find_pos >= 26)
 		return res;
 
 	res[curr_index] = (char) (find_pos + 97);

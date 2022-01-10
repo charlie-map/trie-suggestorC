@@ -174,11 +174,13 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 	for (find_pos = 0; find_pos < 26; find_pos++) {
 		if (!trie->children[find_pos])
 			continue;
+
 		// first check weight at this specific point
 		current_weight += trie->children[find_pos]->weight;
 
 		// see if this weight jumps over trie_pos
 		if (current_weight > trie_pos) {
+			printf("found end weight %lf\n", trie->children[find_pos]->weight);
 			current_trie_next = 1;
 			break;
 		}
@@ -186,9 +188,13 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 		// check next weights
 		current_weight += trie->children[find_pos]->next_weight;
 
-		if (current_weight > trie_pos)
+		if (current_weight > trie_pos) {
+			printf("found next weight %lf\n", trie->children[find_pos]->next_weight);
 			break;
+		}
 	}
+
+	printf("current position %s: %d\n", res, current_trie_next);
 
 	if (find_pos >= 26) // return before trying to add
 		return res;
@@ -342,22 +348,17 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 		res = readpage("./views/type.html", res_length);
 	else if (strcmp(request, "/newword") == 0) {
 		*res_length = 1;
-		res = malloc(sizeof(char));
 		char *word = malloc(sizeof(char));
 		word[0] = '\0';
 
 		word = getword(trie_head, word, 0, res_length);
-		int page_size = snprintf(NULL, 0, "%d", *res_length);
+		int page_size = *res_length;
 
-		*res_length = sizeof(char) * *res_length + sizeof(char) * (page_size + 59);
-		res = realloc(res, *res_length);
+		*res_length = sizeof(char) * *res_length + sizeof(char) * (page_size + 60);
+		res = malloc(*res_length);
 
-		// copy in the size
-		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: %d\n\n\n", *res_length);
-		// copy in buildstring (moving the starte over by the amount currently in returnstring)
-		strcpy(res + sizeof(char) * (59 + page_size), word);
-
-		printf("send response %s\n", res);
+		// copy in the size and the word
+		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/plain\nContent-Length: %d\n\n%s", page_size - 1, word);
 
 		free(word);
 	} else
@@ -365,8 +366,6 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 
 	// use for making sure the entire page is sent
 	while ((res_sent = send(new_fd, res, *res_length, 0)) < *res_length);
-
-	printf("sent\n");
 
 	free(res_length);
 	free(res);

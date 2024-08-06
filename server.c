@@ -349,13 +349,13 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 		word = getword(trie_head, word, 0, res_length);
 		int page_size = snprintf(NULL, 0, "%d", *res_length);
 
-		*res_length = sizeof(char) * *res_length + sizeof(char) * (page_size + 59);
+		*res_length = sizeof(char) * *res_length + sizeof(char) * (page_size + 60);
 		res = realloc(res, *res_length);
 
 		// copy in the size
-		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length: %d\n\n\n", *res_length);
+		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/plain\nContent-Length: %d\n\n\n", *res_length);
 		// copy in buildstring (moving the starte over by the amount currently in returnstring)
-		strcpy(res + sizeof(char) * (59 + page_size), word);
+		strcpy(res + sizeof(char) * (60 + page_size), word);
 
 		printf("send response %s\n", res);
 

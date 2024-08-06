@@ -174,6 +174,7 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 	for (find_pos = 0; find_pos < 26; find_pos++) {
 		if (!trie->children[find_pos])
 			continue;
+
 		// first check weight at this specific point
 		current_weight += trie->children[find_pos]->weight;
 
@@ -190,7 +191,7 @@ char *getword(Trie *trie, char *res, int curr_index, int *max_length) {
 			break;
 	}
 
-	if (find_pos >= 26) // return before trying to add
+	if (find_pos >= 26)
 		return res;
 
 	res[curr_index] = (char) (find_pos + 97);
@@ -342,7 +343,6 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 		res = readpage("./views/type.html", res_length);
 	else if (strcmp(request, "/newword") == 0) {
 		*res_length = 1;
-		res = malloc(sizeof(char));
 		char *word = malloc(sizeof(char));
 		word[0] = '\0';
 
@@ -357,7 +357,8 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 		// copy in buildstring (moving the starte over by the amount currently in returnstring)
 		strcpy(res + sizeof(char) * (60 + page_size), word);
 
-		printf("send response %s\n", res);
+		// copy in the size and the word
+		sprintf(res, "HTTP/1.1 200 OK\nContent-Type:text/plain\nContent-Length: %d\n\n%s", page_size - 1, word);
 
 		free(word);
 	} else
@@ -365,8 +366,6 @@ int send_page(int new_fd, char *request, Trie *trie_head) {
 
 	// use for making sure the entire page is sent
 	while ((res_sent = send(new_fd, res, *res_length, 0)) < *res_length);
-
-	printf("sent\n");
 
 	free(res_length);
 	free(res);

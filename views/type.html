@@ -708,108 +708,7 @@
 			</div>
 			<input id="inputbox"/>
 			<div id="blinker"></div>
-			<div class="pre type">
-				<span full_word='the'>the</span>
-				<span full_word='of'>of</span>
-				<span full_word='in'>in</span>
-				<span full_word='and'>and</span>
-				<span full_word='a'>a</span>
-				<span full_word='is'>is</span>
-				<span full_word='to'>to</span>
-				<span full_word='was'>was</span>
-				<span full_word='as'>as</span>
-				<span full_word='for'>for</span>
-				<span full_word='by'>by</span>
-				<span full_word='on'>on</span>
-				<span full_word='it'>it</span>
-				<span full_word='he'>he</span>
-				<span full_word='with'>with</span>
-				<span full_word='at'>at</span>
-				<span full_word='from'>from</span>
-				<span full_word='an'>an</span>
-				<span full_word='his'>his</span>
-				<span full_word='that'>that</span>
-				<span full_word='also'>also</span>
-				<span full_word='are'>are</span>
-				<span full_word='which'>which</span>
-				<span full_word='has'>has</span>
-				<span full_word='born'>born</span>
-				<span full_word='or'>or</span>
-				<span full_word='its'>its</span>
-				<span full_word='first'>first</span>
-				<span full_word='who'>who</span>
-				<span full_word='new'>new</span>
-				<span full_word='this'>this</span>
-				<span full_word='one'>one</span>
-				<span full_word='were'>were</span>
-				<span full_word='american'>american</span>
-				<span full_word='be'>be</span>
-				<span full_word='known'>known</span>
-				<span full_word='district'>district</span>
-				<span full_word='national'>national</span>
-				<span full_word='united'>united</span>
-				<span full_word='she'>she</span>
-				<span full_word='after'>after</span>
-				<span full_word='county'>county</span>
-				<span full_word='their'>their</span>
-				<span full_word='film'>film</span>
-				<span full_word='two'>two</span>
-				<span full_word='been'>been</span>
-				<span full_word='world'>world</span>
-				<span full_word='state'>state</span>
-				<span full_word='states'>states</span>
-				<span full_word='had'>had</span>
-				<span full_word='school'>school</span>
-				<span full_word='but'>but</span>
-				<span full_word='university'>university</span>
-				<span full_word='south'>south</span>
-				<span full_word='football'>football</span>
-				<span full_word='have'>have</span>
-				<span full_word='during'>during</span>
-				<span full_word='album'>album</span>
-				<span full_word='city'>city</span>
-				<span full_word='located'>located</span>
-				<span full_word='may'>may</span>
-				<span full_word='they'>they</span>
-				<span full_word='other'>other</span>
-				<span full_word='season'>season</span>
-				<span full_word='her'>her</span>
-				<span full_word='not'>not</span>
-				<span full_word='de'>de</span>
-				<span full_word='family'>family</span>
-				<span full_word='team'>team</span>
-				<span full_word='part'>part</span>
-				<span full_word='played'>played</span>
-				<span full_word='north'>north</span>
-				<span full_word='between'>between</span>
-				<span full_word='most'>most</span>
-				<span full_word='village'>village</span>
-				<span full_word='league'>league</span>
-				<span full_word='series'>series</span>
-				<span full_word='released'>released</span>
-				<span full_word='name'>name</span>
-				<span full_word='all'>all</span>
-				<span full_word='into'>into</span>
-				<span full_word='when'>when</span>
-				<span full_word='species'>species</span>
-				<span full_word='time'>time</span>
-				<span full_word='station'>station</span>
-				<span full_word='member'>member</span>
-				<span full_word='years'>years</span>
-				<span full_word='used'>used</span>
-				<span full_word='area'>area</span>
-				<span full_word='only'>only</span>
-				<span full_word='former'>former</span>
-				<span full_word='second'>second</span>
-				<span full_word='where'>where</span>
-				<span full_word='over'>over</span>
-				<span full_word='won'>won</span>
-				<span full_word='list'>list</span>
-				<span full_word='three'>three</span>
-				<span full_word='music'>music</span>
-				<span full_word='west'>west</span>
-				<span full_word='river'>river</span>
-			</div>
+			<div class="pre type"></div>
 		</div>
 
 		<div class="typestarter">
@@ -870,9 +769,14 @@
 		</div>
 
 		<script>
-			$.get("/newword", (res) => {
-				console.log("receive response", res);
-			});
+			// fill pre-word with 20 characters of the form:
+			// <span full_word='the'>the</span>
+			for (let i = 0; i < 20; i++) {
+				$.get("/newword", (res) => {
+					$(".pre.type").append(`<span full_word="${res}"
+						>${res}</span>`);
+				});
+			}
 
 			let spaninfo = "Type to start";
 
@@ -913,7 +817,7 @@
 			});
 
 			$("#timebar").css("width", "100%");
-			$(".type span").on("click", blinkerselect);
+			$(".type").on("click", blinkerselect);
 
 			let current_timebar_radius = 25;
 			let current_timebar_height = 7;
@@ -979,7 +883,7 @@
 
 						typestarter_timeout = setTimeout(function() {
 							$(".typestarter").show();
-						}, 60000);
+						}, 58600);
 					});
 				}
 			}
@@ -1125,6 +1029,11 @@
 
 								current_pre_value = $(current_pre_element).html();
 							}
+
+							// add a new word to the pre list
+							$.get("/newword", (res) => {
+								$(".pre.type").append(`<span full_word="${res}">${res}</span>`)
+							});
 						}
 
 						current_word_length = 0;
